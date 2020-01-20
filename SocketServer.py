@@ -2,6 +2,7 @@
 
 import socket
 import pigpio
+import time
 
 HOST = ''  # Standard loopback interface address (localhost)
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
@@ -41,30 +42,41 @@ with conn:
     while flag:
         data = conn.recv(1024)
 
-        string = str(data, 'utf8')
+        string = str(data, 'utf-8')
         strings = string.split()
 
         try:
 
+            if string == "q":
+
+                p.set_PWM_dutycycle(xServo, 0)
+                p.set_PWM_dutycycle(yServo, 0)
+                p.set_PWM_dutycycle(zServo, 0)
+                print("Shutting down!....")
+                flag = False
             if strings[0] == "xAxis":
                 xAxis = float(strings[1])  # converting to float
             if strings[2] == "yAxis":
                 yAxis = float(strings[3])
             if strings[4] == "zAxis":
                 zAxis = float(strings[5])
-            if strings[0] == "q":
-                p.set_PWM_dutycycle(xServo, 0)
-                p.set_PWM_dutycycle(yServo, 0)
-                p.set_PWM_dutycycle(zServo, 0)
-                flag = False
+            # if string == "q":
+            #     p.set_PWM_dutycycle(xServo, 0)
+            #     p.set_PWM_dutycycle(yServo, 0)
+            #     p.set_PWM_dutycycle(zServo, 0)
+            #     flag = False
 
             if strings[0] == "f":
                 p.set_PWM_dutycycle(xServo, 0)
                 p.set_PWM_dutycycle(yServo, 0)
                 p.set_PWM_dutycycle(zServo, 0)
         except:
-            print("Corrupt data, continuing program. Amount of corrupted data packets:  ", exceptionAmount)
+            print("Corrupt data, continuing program if flag is still true - flag state: ", str(flag) + " Amount of corrupted data packets:  ", exceptionAmount)
             exceptionAmount = exceptionAmount + 1
+
+        # print("--------------")
+        # print("****", xAxis, "****")
+        # print(yAxis, "******", zAxis)
 
         try:
             p.set_servo_pulsewidth(xServo, xAxis)
@@ -74,7 +86,8 @@ with conn:
         except KeyboardInterrupt:
             p.stop()
 
-        # conn.sendall(data)
+        conn.sendall(bytes("executed!", 'utf-8'))
+        time.sleep(0.00166)
 
 s.close()
 
