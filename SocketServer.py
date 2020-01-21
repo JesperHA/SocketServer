@@ -33,14 +33,16 @@ s.bind((HOST, PORT))
 s.listen()
 print("Listening...")
 conn, addr = s.accept()
+
 with conn:
     print('Connected by', addr)
-    # p.start(2.5)
 
     flag = True
 
     while flag:
+        startTime = time.time()
         data = conn.recv(1024)
+        time.sleep(0.01)
 
         string = str(data, 'utf-8')
         strings = string.split()
@@ -60,11 +62,6 @@ with conn:
                 yAxis = float(strings[3])
             if strings[4] == "zAxis":
                 zAxis = float(strings[5])
-            # if string == "q":
-            #     p.set_PWM_dutycycle(xServo, 0)
-            #     p.set_PWM_dutycycle(yServo, 0)
-            #     p.set_PWM_dutycycle(zServo, 0)
-            #     flag = False
 
             if strings[0] == "f":
                 p.set_PWM_dutycycle(xServo, 0)
@@ -82,12 +79,13 @@ with conn:
             p.set_servo_pulsewidth(xServo, xAxis)
             p.set_servo_pulsewidth(yServo, yAxis)
             p.set_servo_pulsewidth(zServo, zAxis)
-            # time.sleep(0.25)
         except KeyboardInterrupt:
             p.stop()
 
         conn.sendall(bytes("executed!", 'utf-8'))
-        time.sleep(0.00166)
+        delay = time.time() - startTime
+        sleep = ((1 / 60) - delay % (1 / 60))
+        time.sleep(sleep)
 
 s.close()
 
