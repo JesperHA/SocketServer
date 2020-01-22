@@ -49,7 +49,13 @@ s.listen()
 print("Listening...")
 conn, addr = s.accept()
 
-video = cv2.VideoCapture("sample.mp4")
+video = cv2.VideoCapture("sample2.mp4")
+
+image = ""
+tickTime = 0
+boolean = True
+fps = 1
+frames = 1
 
 with conn:
     print('Connected by', addr)
@@ -63,19 +69,26 @@ with conn:
 
         string = str(data, 'utf-8')
         strings = string.split()
+
+
+        # if tickTime > 0.01666 or boolean:
         try:
-            ret, frame = video.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            frame = cv2.resize(frame, (427, 240))
+            ret, frame = video.read(1024)
+            # print("Size of read fram: ", sys.getsizeof(frame))
+            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # frame = cv2.resize(frame, (427, 240))
             # frame = cv2.resize(frame, (1280, 720))
             sizeBefore = sys.getsizeof(frame)
 
             encoded, buf = cv2.imencode(".jpg", frame)
             image = base64.b64encode(buf)
             sizeAfter = sys.getsizeof(image)
-            print("Size before: ", sizeBefore)
-            print("Size After: ", sizeAfter)
+            # print("Size before: ", sizeBefore)
+            # print("Size After: ", sizeAfter)
 
+
+            tickTime = 0
+            boolean = False
             # image_string = str(image, 'utf-8')
             # compressedImage = zlib.compress(image)
             # size = sys.getsizeof(compressedImage)
@@ -124,13 +137,17 @@ with conn:
         # print(value)
         # conn.sendall(bytes("executed!", 'utf-8'))
         delay = time.time() - startTime
-        # sleep = ((1 / 24) - delay % (1 / 24))
+        sleep = ((1 / 24) - delay % (1 / 24))
         # time.sleep(sleep)
-        tickTime = delay
+        tickTime += delay
         tickrate = 1 / tickTime
-        print("tickTime: ", tickTime)
-        print("tickrate: ", tickrate)
+        # print("tickTime: ", tickTime)
 
+        frames += 1
+        fps += tickrate
+        realFps = fps / frames
+        # print("tickrate: ", tickrate)
+        print("fps: ", realFps)
 s.close()
 
 
