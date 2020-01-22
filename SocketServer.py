@@ -10,10 +10,12 @@ PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
 xAxis = 0
 yAxis = 0
 zAxis = 0
+throttle = 0
 
 xServo = 17
 yServo = 27
 zServo = 22
+tServo = 23
 
 exceptionAmount = 1
 
@@ -22,10 +24,12 @@ p = pigpio.pi()
 p.set_mode(xServo, pigpio.OUTPUT)
 p.set_mode(yServo, pigpio.OUTPUT)
 p.set_mode(zServo, pigpio.OUTPUT)
+p.set_mode(tServo, pigpio.OUTPUT)
 
 p.set_PWM_frequency(xServo, 50)
 p.set_PWM_frequency(yServo, 50)
 p.set_PWM_frequency(zServo, 50)
+p.set_PWM_frequency(tServo, 50)
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -51,17 +55,13 @@ with conn:
 
             if string == "q":
 
-                p.set_PWM_dutycycle(xServo, 0)
-                p.set_PWM_dutycycle(yServo, 0)
-                p.set_PWM_dutycycle(zServo, 0)
                 print("Shutting down!....")
                 flag = False
-            if strings[0] == "xAxis":
+            if strings[0] == "control":
                 xAxis = float(strings[1])  # converting to float
-            if strings[2] == "yAxis":
-                yAxis = float(strings[3])
-            if strings[4] == "zAxis":
-                zAxis = float(strings[5])
+                yAxis = float(strings[2])
+                zAxis = float(strings[3])
+                throttle = float(strings[4])
 
             if strings[0] == "f":
                 p.set_PWM_dutycycle(xServo, 0)
@@ -79,13 +79,14 @@ with conn:
             p.set_servo_pulsewidth(xServo, xAxis)
             p.set_servo_pulsewidth(yServo, yAxis)
             p.set_servo_pulsewidth(zServo, zAxis)
+            p.set_servo_pulsewidth(tServo, throttle)
         except KeyboardInterrupt:
             p.stop()
 
-        conn.sendall(bytes("executed!", 'utf-8'))
         delay = time.time() - startTime
         sleep = ((1 / 60) - delay % (1 / 60))
         time.sleep(sleep)
+        conn.sendall(bytes("executed!", 'utf-8'))
 
 s.close()
 
