@@ -7,8 +7,8 @@ import pigpio
 import time
 import cv2
 import base64
-import zlib
-import zmq
+import picamera
+import io
 import numpy as np
 
 sys.path.append('/usr/lib/python3/dist-packages')
@@ -49,7 +49,15 @@ s.listen()
 print("Listening...")
 conn, addr = s.accept()
 
-video = cv2.VideoCapture("sample2.mp4")
+# video = cv2.VideoCapture("sample2.mp4")
+stream = io.BytesIO()
+camera = picamera.PiCamera()
+camera.resolution = (360, 240)
+
+camera.capture(stream, format='jpeg')
+print("Stream: ", stream)
+
+
 
 image = ""
 tickTime = 0
@@ -60,8 +68,12 @@ frames = 1
 with conn:
     print('Connected by', addr)
 
-    flag = True
+    camera.start_preview()
+    time.sleep(2)
+    camera.stop_preview()
 
+
+    flag = True
     while flag:
         startTime = time.time()
         data = conn.recv(1024)
@@ -71,20 +83,31 @@ with conn:
         strings = string.split()
 
 
+
+
+
         # if tickTime > 0.01666 or boolean:
         try:
-            ret, frame = video.read(1024)
-            # print("Size of read fram: ", sys.getsizeof(frame))
+            # ret, frame = video.read(1024)
+
+            # print("Size of read frame: ", sys.getsizeof(frame))
             # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             # frame = cv2.resize(frame, (427, 240))
             # frame = cv2.resize(frame, (1280, 720))
-            sizeBefore = sys.getsizeof(frame)
+            # sizeBefore = sys.getsizeof(frame)
 
-            encoded, buf = cv2.imencode(".jpg", frame)
-            image = base64.b64encode(buf)
+            # print("Printing frame: ", frame)
+            # print("Printing raw stream: ", stream.getvalue())
+            formatted = np.fromstring(stream.getvalue(), dtype=np.uint8)
+            print("succesfully encoded from bytescode: ", formatted)
+            # encoded, buf = cv2.imencode(".jpg", formatted)
+            # print("Succesfully encoded array: ", buf)
+            image = base64.b64encode(formatted)
+            print("Image: ", image)
+
             sizeAfter = sys.getsizeof(image)
             # print("Size before: ", sizeBefore)
-            # print("Size After: ", sizeAfter)
+            print("Size After: ", sizeAfter)
 
 
             tickTime = 0
