@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #!LD_PRELOAD=/usr/lib/arm-linux-gnueabihf/libatomic.so.1 python3
-
+import random
 import sys
 import socket
 import pigpio
@@ -8,13 +8,14 @@ import time
 import cv2
 import base64
 import picamera
+from picamera.array import PiRGBArray
 import io
 import numpy as np
 
 sys.path.append('/usr/lib/python3/dist-packages')
 # remember to run pigpio daemon!
 
-HOST = ''  # Standard loopback interface address (localhost)
+HOST = '192.168.7.130'  # Standard loopback interface address (localhost)
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
 
 xAxis = 0
@@ -43,19 +44,21 @@ p.set_PWM_frequency(tServo, 50)
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-
-s.bind((HOST, PORT))
-s.listen()
-print("Listening...")
-conn, addr = s.accept()
+s.connect((HOST, PORT))
 
 # video = cv2.VideoCapture("sample2.mp4")
-stream = io.BytesIO()
-camera = picamera.PiCamera()
-camera.resolution = (360, 240)
 
-camera.capture(stream, format='jpeg')
-print("Stream: ", stream)
+
+camera = picamera.PiCamera()
+camera.resolution = (368, 240)
+camera.framerate = 24
+rawCapture = PiRGBArray(camera, size=(368, 240))
+time.sleep(0.5)
+#
+# camera.capture_sequence(['image1.jpg', 'image2.jpg', 'image3.jpg'])
+#
+# print("Stream: ", stream)
+# print("Stream read: ", stream.read())
 
 
 
@@ -65,113 +68,121 @@ boolean = True
 fps = 1
 frames = 1
 
-with conn:
-    print('Connected by', addr)
-
-    camera.start_preview()
-    time.sleep(2)
-    camera.stop_preview()
 
 
-    flag = True
-    while flag:
-        startTime = time.time()
-        data = conn.recv(1024)
-        # time.sleep(0.01)
+# camera.start_preview()
+# time.sleep(2)
+# camera.stop_preview()
 
-        string = str(data, 'utf-8')
-        strings = string.split()
 
+flag = True
+while flag:
+    startTime = time.time()
+    data = s.recv(1024)
+    # time.sleep(0.01)
+
+    string = str(data, 'utf-8')
+    strings = string.split()
 
 
 
 
-        # if tickTime > 0.01666 or boolean:
-        try:
-            # ret, frame = video.read(1024)
 
-            # print("Size of read frame: ", sys.getsizeof(frame))
-            # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # frame = cv2.resize(frame, (427, 240))
-            # frame = cv2.resize(frame, (1280, 720))
-            # sizeBefore = sys.getsizeof(frame)
+    # if tickTime > 0.01666 or boolean:
+    try:
 
-            # print("Printing frame: ", frame)
-            # print("Printing raw stream: ", stream.getvalue())
-            formatted = np.fromstring(stream.getvalue(), dtype=np.uint8)
-            print("succesfully encoded from bytescode: ", formatted)
-            # encoded, buf = cv2.imencode(".jpg", formatted)
-            # print("Succesfully encoded array: ", buf)
-            image = base64.b64encode(formatted)
-            print("Image: ", image)
+        for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+            frame = f.array
 
-            sizeAfter = sys.getsizeof(image)
-            # print("Size before: ", sizeBefore)
-            print("Size After: ", sizeAfter)
+            rawCapture.truncate(0)
+            break
 
 
-            tickTime = 0
-            boolean = False
-            # image_string = str(image, 'utf-8')
-            # compressedImage = zlib.compress(image)
-            # size = sys.getsizeof(compressedImage)
+        # print("Live stream: ", stream)
+        # ret, frame = video.read(1024)
+        # print("Read live stream: ", frame)
+
+        # print("Size of read frame: ", sys.getsizeof(frame))
+        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # frame = cv2.resize(frame, (427, 240))
+        # frame = cv2.resize(frame, (1280, 720))
+        # sizeBefore = sys.getsizeof(frame)
+
+        # print("Printing frame: ", frame)
+        # print("Printing raw stream: ", stream.getvalue())
+        # frame = np.fromstring(video.getvalue(), dtype=np.uint8)
+        # print("succesfully encoded from bytescode: ", formatted)
+        encoded, buf = cv2.imencode(".jpg", frame)
+        # print("Succesfully encoded array: ", buf)
+        image = base64.b64encode(buf)
+        # print("Image: ", image)
+
+        sizeAfter = sys.getsizeof(image)
+        # print("Size before: ", sizeBefore)
+        print("Size After: ", sizeAfter)
+
+
+        tickTime = 0
+        boolean = False
+        # image_string = str(image, 'utf-8')
+        # compressedImage = zlib.compress(image)
+        # size = sys.getsizeof(compressedImage)
 
 
 
 
-        except:
-            print("Video exception")
+    except:
+        print("Video exception")
 
-        try:
+    try:
 
-            if string == "q":
+        if string == "q":
 
-                print("Shutting down!....")
-                flag = False
-            if strings[0] == "control":
-                xAxis = float(strings[1])  # converting to float
-                yAxis = float(strings[2])
-                zAxis = float(strings[3])
-                throttle = float(strings[4])
+            print("Shutting down!....")
+            flag = False
+        if strings[0] == "control":
+            xAxis = float(strings[1])  # converting to float
+            yAxis = float(strings[2])
+            zAxis = float(strings[3])
+            throttle = float(strings[4])
 
-            if strings[0] == "f":
-                p.set_PWM_dutycycle(xServo, 0)
-                p.set_PWM_dutycycle(yServo, 0)
-                p.set_PWM_dutycycle(zServo, 0)
-        except:
-            print("Corrupt data, continuing program if flag is still true - flag state: ", str(flag) + " Amount of corrupted data packets:  ", exceptionAmount)
-            exceptionAmount = exceptionAmount + 1
+        if strings[0] == "f":
+            p.set_PWM_dutycycle(xServo, 0)
+            p.set_PWM_dutycycle(yServo, 0)
+            p.set_PWM_dutycycle(zServo, 0)
+    except:
+        print("Corrupt data, continuing program if flag is still true - flag state: ", str(flag) + " Amount of corrupted data packets:  ", exceptionAmount)
+        exceptionAmount = exceptionAmount + 1
 
-        # print("--------------")
-        # print("****", xAxis, "****")
-        # print(yAxis, "******", zAxis)
+    # print("--------------")
+    # print("****", xAxis, "****")
+    # print(yAxis, "******", zAxis)
 
-        try:
-            p.set_servo_pulsewidth(xServo, xAxis)
-            p.set_servo_pulsewidth(yServo, yAxis)
-            p.set_servo_pulsewidth(zServo, zAxis)
-            p.set_servo_pulsewidth(tServo, throttle)
-        except KeyboardInterrupt:
-            p.stop()
+    try:
+        p.set_servo_pulsewidth(xServo, xAxis)
+        p.set_servo_pulsewidth(yServo, yAxis)
+        p.set_servo_pulsewidth(zServo, zAxis)
+        p.set_servo_pulsewidth(tServo, throttle)
+    except KeyboardInterrupt:
+        p.stop()
 
-        # print(image)
+    # print(image)
 
-        conn.sendall(image)
-        # print(value)
-        # conn.sendall(bytes("executed!", 'utf-8'))
-        delay = time.time() - startTime
-        sleep = ((1 / 24) - delay % (1 / 24))
-        # time.sleep(sleep)
-        tickTime += delay
-        tickrate = 1 / tickTime
-        # print("tickTime: ", tickTime)
+    s.sendall(image)
+    # print(value)
+    # conn.sendall(bytes("executed!", 'utf-8'))
+    delay = time.time() - startTime
+    sleep = ((1 / 24) - delay % (1 / 24))
+    # time.sleep(sleep)
+    tickTime += delay
+    tickrate = 1 / tickTime
+    # print("tickTime: ", tickTime)
 
-        frames += 1
-        fps += tickrate
-        realFps = fps / frames
-        # print("tickrate: ", tickrate)
-        print("fps: ", realFps)
-s.close()
+    frames += 1
+    fps += tickrate
+    realFps = fps / frames
+    # print("tickrate: ", tickrate)
+    print("fps: ", realFps)
 
 
 
