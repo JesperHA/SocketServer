@@ -81,8 +81,8 @@ class PiVideoStream:
         self.stopped = True
 
 
-mainStream = 0
-run_once = 0
+
+
 fps = 1
 frames = 1
 
@@ -151,5 +151,4 @@ while flag:
     realFps = fps / frames
     # print("tickrate: ", tickrate)
     print("fps: ", realFps)
-    mainStream += 1
-    print("Main: ", mainStream)
+
